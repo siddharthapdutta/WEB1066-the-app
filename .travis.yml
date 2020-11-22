@@ -1,10 +1,37 @@
-language: python
-install: "pip install -r requirements.txt"
+sudo: required
+language: java
+dist: trusty
+jdk: 
+  - oraclejdk8
+  - oraclejdk9
+
+env:
+  matrix:
+  - COVERAGE=0.5 TARGET=ui
+  - COVERAGE=0.5 TARGET=service/cart
+  - COVERAGE=0.5 TARGET=service/user
+  - COVERAGE=0.36 TARGET=repository/order
+  - COVERAGE=0.5 TARGET=repository/cart
+  - COVERAGE=0.5 TARGET=repository/product
+  - COVERAGE=0.31 TARGET=repository/user
+  global:
+  - secure: pJ17qx6vBy4t7/gNfcvJtKfLEfhlXoK9B67RMWPZ0TXOuuCzvK/NGtZhKuQsY5mGsP5M2s87CpWb5xUzLqEWGCUg+zqSfWhHaUK1DXOWQjtPkJ5WTaNsgvpmrCPadUlcpf7eYl9j5df/Ik/vLuWhMA8FScvamIqFgi2kaR2eXOI9MjGkPxGA0I7rwllINjvykDF+K00NPnqoC7xvgR6nzFO51cs6fYfVeSqfLjezLDJtSZNVaB2zRNDdh64+g955i2nYkAb6H7M7AjamQNaemwvy9nex52DqIRQPIq2ipmH68L7djx862vH2XqEPXTxurtR3dLZgBTuGxRWKzMNXFiQXZwTUTSfJ0EjX45Mez0D7ZjJvOssQm1iDHpIYWSGx9VtPZcSkFBG8xfIdR2Jsh9aNYEtu42PJ+lCrEry28bPlWmHnj5tqXQVnJ6+BrOsx7qh8TGXv+1+HqOSyw9lTQW6JnimngVp6v8s3N+ENs4p1fTfnlvpUpDk+MvulMagan1z/z+auYaagS2mvzwlhp4uKK7/cZT9z8cadcJqtvgRKtQ9SJiSaStVd6AkcOa/4mQn4rV/la1r81ERhYf3dEowcjz3GJ9GHsgADbyIRm/yb1ueo2aBt7uhMZ0AjKrclgtuvccTrDblqpg7u41PogQEXGF+KVURTtk1E2nt065w=
+  - secure: Al6MwyC4fRAVEzykvDnyql4Mi1G69QhKFubiMEXQd/KVPJdo4x392dMLvRsB6T9zoth/Ozrf8pJU3tiovTa33uus9+jWai725T4uSKjlmKpNTcIpwjYDihKEmgQC9D5Ir26uZ7kWeXzfvaxEhanl4AHuPx73M7xNl/zpn4seAucXIQ2oj5JbbfjwSVgwFOE/9ZQpbX5FOWE6Anl3CaI3WJN3zRJJVjGPGEUk1W1uBGZs7cgQLBXwxr6iHW8tFrVYGkfltZL3dSvKkd5irca+cyVtGF634NJTiV0hezIACWSgwRLnMr0mA0kUiKFNmhU4ktSR+ynCtDRF7i7crLt3U+HW3v0XIwYzvJlJfNPYZh/jHp2k5tz/JL/CM9hoGDjEhDA1Xj3+MPh23qcGIOycvUaclRD5e7whGYpSYpSFUTUjmhQCg5mGRppSsnu2LVlJvvNxbxePknWiMYExQ/J0hfA+fDs3KDQiwvz8dh0qE1gAHttGoUZMxaWkfEr5v8yjAdLr8aqe4doyDACrHQunIUF9+U8mueBg3w8dwGtlIa3n6vR5bTLxqBcVu06C7gyWwaQCsmJKsEQolAO950MH7qKl+KwRMF4unNgtO3FjTJj225HoRnU7mZRMayTsVD+vt2TtW7WcK2LO6t/b7349g1NpV9UYkb8mvva+35SZrr0=
+
+services:
+  - docker
+
+install:
+  - "./gradlew clean jar"
 
 script:
-  # Run ANSIBLE checks
-  # - ANSIBLE0008: Disabled for use of sudo warnings - to address
-  # - ANSIBLE0011: Disabled for all tasks which should be named
-  # - ANSIBLE0012: Disabled (should not change if nothings needs doing) - to address
-  # - ANSIBLE0013: Disabled - few uses of shell commands - to address
-  - find vagrant/provision -name "*.yml" -exec ansible-lint -x ANSIBLE008,ANSIBLE0011,ANSIBLE0012,ANSIBLE0013  {} +
+  - "COVERAGE=${COVERAGE} ./gradlew -p ./monolithic/$TARGET check"
+
+jobs:
+  include:
+    stage: deploy
+    deploy:
+      - provider: script
+        script: bash -c "echo \"${DOCKER_PASSWORD}\" | docker login --username \"${DOCKER_LOGIN}\" --password-stdin"
+        on:
+          all_branches: true
